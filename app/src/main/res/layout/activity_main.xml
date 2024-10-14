@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <!-- Título -->
+
     <TextView
         android:id="@+id/tv_bienvenido"
         android:layout_width="wrap_content"
