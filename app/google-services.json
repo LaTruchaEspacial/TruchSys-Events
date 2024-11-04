@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "404734880192",
+    "project_id": "azafatasapp-c0eae",
+    "storage_bucket": "azafatasapp-c0eae.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:404734880192:android:8293b47a1fa62945000025",
+        "android_client_info": {
+          "package_name": "tfg.azafatasapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC69jzJ4nU6MxxHWysI7NeUOjVtwfNDdDY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
