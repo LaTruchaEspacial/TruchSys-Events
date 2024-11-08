@@ -1,143 +1,126 @@
-// Ruta: tfg/azafatasapp/Auth/Auth.kt
 package tfg.azafatasapp.Auth
 
 import android.content.Context
-import android.content.Intent
-import android.util.Log
 import android.widget.Toast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import tfg.azafatasapp.models.User
-import tfg.azafatasapp.ui.home.HomeActivity
 
 class Auth(private val context: Context) {
-    private val db = FirebaseFirestore.getInstance()
-    private val auth = FirebaseAuth.getInstance()
 
-    // Método para cargar los datos del usuario desde Firestore
-    fun loadUserData(onSuccess: (User) -> Unit, onFailure: (Exception) -> Unit) {
-        val currentUser = auth.currentUser
-        if (currentUser != null) {
-            db.collection("users").document(currentUser.uid)
-                .get()
-                .addOnSuccessListener { document ->
-                    if (document != null) {
-                        val user = document.toObject(User::class.java)
-                        if (user != null) {
-                            onSuccess(user)
-                        } else {
-                            onFailure(Exception("No se encontraron datos del usuario"))
-                        }
-                    } else {
-                        onFailure(Exception("Documento de usuario no encontrado"))
-                    }
-                }
-                .addOnFailureListener { exception -> onFailure(exception) }
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+
+    // Método para verificar si el usuario está autenticado
+    fun isAuthenticated(): Boolean {
+        return auth.currentUser != null
+    }
+
+    // Método para obtener el usuario autenticado actual
+    fun getCurrentUser(onSuccess: (User?) -> Unit, onFailure: (Exception) -> Unit) {
+        val firebaseUser = auth.currentUser
+        if (firebaseUser != null) {
+            // Usamos el email del usuario autenticado para buscarlo en Firestore
+            getUserByEmail(firebaseUser.email ?: "", { user ->
+                onSuccess(user)
+            }, { exception ->
+                onFailure(exception)
+            })
         } else {
-            onFailure(Exception("No hay usuario autenticado"))
+            // Si no hay usuario autenticado
+            onSuccess(null)
         }
     }
 
-    // Ruta: tfg/azafatasapp/Auth/Auth.kt
-    fun deleteAccount(onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
-        val user = auth.currentUser
-        user?.let { currentUser ->
-            val userId = currentUser.uid
-
-            // Eliminar el documento del usuario de Firestore primero
-            db.collection("users").document(userId).delete()
-                .addOnSuccessListener {
-                    // Si se elimina el documento, eliminar también el usuario de Firebase Auth
-                    currentUser.delete().addOnCompleteListener { task ->
-                        if (task.isSuccessful) {
-                            onSuccess() // Llama al callback de éxito
-                        } else {
-                            onFailure(task.exception ?: Exception("Error desconocido al eliminar la cuenta."))
-                        }
-                    }
-                }
-                .addOnFailureListener { exception ->
-                    onFailure(exception) // Llama al callback de error
-                }
-        } ?: run {
-            onFailure(Exception("No hay usuario autenticado para eliminar."))
-        }
-    }
-
-    // Método para actualizar los datos del usuario
-    fun updateUserData(
-        newName: String,
-        newEmail: String,
-        onSuccess: () -> Unit,
+    // Método para obtener un usuario por su email
+    fun getUserByEmail(
+        email: String,
+        onSuccess: (User?) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        val userId = auth.currentUser?.uid ?: return
-        val updates = hashMapOf<String, Any>(
-            "name" to newName,
-            "email" to newEmail
-        )
-
-        db.collection("users").document(userId).update(updates)
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { exception -> onFailure(exception) }
-    }
-
-    // Método de inicio de sesión
-    fun login(email: String, password: String, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
-        auth.signInWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Toast.makeText(context, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show()
-                    val intent = Intent(context, HomeActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    context.startActivity(intent)
-                    onSuccess()
+        firestore.collection("users")
+            .whereEqualTo("email", email)
+            .get()
+            .addOnSuccessListener { result ->
+                if (!result.isEmpty) {
+                    val user = result.documents[0].toObject(User::class.java)
+                    onSuccess(user)
                 } else {
-                    task.exception?.let { onFailure(it) }
+                    onSuccess(null)
                 }
+            }
+            .addOnFailureListener { exception ->
+                onFailure(exception)
             }
     }
 
-    // Método de registro de usuario
+    // Método para registrar un nuevo usuario
     fun register(
-        name: String,
         email: String,
         password: String,
+        name: String,
+        phone: String,
+        birthYear: String,
+        gender: String,
+        dni: String,
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    val userId = auth.currentUser?.uid ?: return@addOnCompleteListener
-                    val user = hashMapOf(
-                        "name" to name,
-                        "email" to email
-                    )
-
-                    db.collection("users").document(userId)
-                        .set(user)
-                        .addOnSuccessListener { onSuccess() }
-                        .addOnFailureListener { e ->
-                            Log.e("Auth", "Error al registrar en Firestore: ${e.message}")
-                            onFailure(e)
-                        }
+                    val user = auth.currentUser
+                    user?.let {
+                        val userData = User(
+                            uid = it.uid,
+                            name = name,
+                            email = email,
+                            phone = phone,
+                            birthYear = birthYear,
+                            gender = gender,
+                            dni = dni
+                        )
+                        firestore.collection("users")
+                            .document(it.uid)
+                            .set(userData)
+                            .addOnSuccessListener {
+                                onSuccess()
+                            }
+                            .addOnFailureListener { exception ->
+                                onFailure(exception)
+                            }
+                    }
                 } else {
-                    task.exception?.let { onFailure(it) }
+                    onFailure(task.exception ?: Exception("Error desconocido"))
                 }
             }
     }
 
-    // Método para recuperar contraseña
-    fun resetPassword(email: String, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
-        auth.sendPasswordResetEmail(email)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    onSuccess()
-                    Toast.makeText(context, "Se ha enviado un enlace para restablecer la contraseña", Toast.LENGTH_LONG).show()
-                } else {
-                    task.exception?.let { onFailure(it) }
+    // Método para iniciar sesión
+    fun login(
+        email: String,
+        password: String,
+        onSuccess: (User) -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        auth.signInWithEmailAndPassword(email, password)
+            .addOnSuccessListener { authResult ->
+                val firebaseUser = authResult.user
+                firebaseUser?.let {
+                    getUserByEmail(firebaseUser.email ?: "", { user ->
+                        user?.let {
+                            onSuccess(user) // Pasa el `user` de Firestore al callback `onSuccess`
+                        } ?: onFailure(Exception("Usuario no encontrado en Firestore"))
+                    }, onFailure)
                 }
             }
+            .addOnFailureListener { exception ->
+                onFailure(exception)
+            }
+    }
+
+    // Método para cerrar sesión
+    fun logout() {
+        auth.signOut()
     }
 }

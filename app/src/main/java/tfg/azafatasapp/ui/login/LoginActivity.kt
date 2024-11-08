@@ -2,78 +2,115 @@ package tfg.azafatasapp.ui.login
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import tfg.azafatasapp.Auth.Auth
-import tfg.azafatasapp.R
 import tfg.azafatasapp.ui.home.HomeActivity
+import tfg.azafatasapp.Admin.MainActivityAdmin
 
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : ComponentActivity() {
 
     private lateinit var auth: Auth
-    private lateinit var etEmail: EditText
-    private lateinit var etPassword: EditText
-    private lateinit var btnLogin: Button
-    private lateinit var tvForgotPassword: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_login)
-
         auth = Auth(this)
 
-        // Inicializar vistas
-        etEmail = findViewById(R.id.et_email)
-        etPassword = findViewById(R.id.et_password)
-        btnLogin = findViewById(R.id.btn_login)
-        tvForgotPassword = findViewById(R.id.tv_forgot_password)
-
-        // Configurar botón de inicio de sesión
-        btnLogin.setOnClickListener {
-            val email = etEmail.text.toString()
-            val password = etPassword.text.toString()
-            login(email, password)
-        }
-
-        // Configurar enlace para recuperar contraseña
-        tvForgotPassword.setOnClickListener {
-            recoverPassword()
+        setContent {
+            LoginScreen()
         }
     }
 
-    // Método para iniciar sesión
-    private fun login(email: String, password: String) {
-        auth.login(email, password,
-            onSuccess = {
-                // Iniciar HomeActivity si el login es exitoso
-                val intent = Intent(this, HomeActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(intent)
-                finish()
-            },
-            onFailure = { exception ->
-                Toast.makeText(this, "Error al iniciar sesión: ${exception.message}", Toast.LENGTH_SHORT).show()
-            }
-        )
-    }
+    @Composable
+    fun LoginScreen() {
+        var email by remember { mutableStateOf("") }
+        var password by remember { mutableStateOf("") }
+        var errorMessage by remember { mutableStateOf("") }
+        var isLoading by remember { mutableStateOf(false) }
 
-    // Método para recuperar contraseña
-    private fun recoverPassword() {
-        val email = etEmail.text.toString()
-        if (email.isNotEmpty()) {
-            auth.resetPassword(email,
-                onSuccess = {
-                    Toast.makeText(this, "Correo de recuperación enviado", Toast.LENGTH_SHORT).show()
-                },
-                onFailure = { exception ->
-                    Toast.makeText(this, "Error al enviar el correo: ${exception.message}", Toast.LENGTH_SHORT).show()
-                }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Iniciar sesión",
+                fontSize = 24.sp,
+                modifier = Modifier.padding(bottom = 24.dp)
             )
-        } else {
-            Toast.makeText(this, "Por favor, introduce tu correo electrónico", Toast.LENGTH_SHORT).show()
+
+            TextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Correo Electrónico") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Email)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Contraseña") },
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    isLoading = true
+                    auth.login(email, password, { user ->
+                        isLoading = false
+                        if (user?.role == "admin") {
+                            // Si es admin, navegar a MainActivityAdmin
+                            Toast.makeText(this@LoginActivity, "Bienvenido Admin", Toast.LENGTH_SHORT).show()
+                            startActivity(Intent(this@LoginActivity, MainActivityAdmin::class.java))
+                            finish()
+                        } else if (user?.role == "user") {
+                            // Si es usuario normal, navegar a HomeActivity
+                            Toast.makeText(this@LoginActivity, "Bienvenido Usuario", Toast.LENGTH_SHORT).show()
+                            startActivity(Intent(this@LoginActivity, HomeActivity::class.java))
+                            finish()
+                        } else {
+                            // Si el rol no es reconocido, mostrar error
+                            errorMessage = "Acceso denegado. Rol no reconocido."
+                        }
+                    }, { exception ->
+                        isLoading = false
+                        errorMessage = "Error: ${exception.message}"
+                    })
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
+            ) {
+                Text("Iniciar sesión")
+            }
+
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp))
+            }
+
+            if (errorMessage.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
+            }
         }
     }
 }

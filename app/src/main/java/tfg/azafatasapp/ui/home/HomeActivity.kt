@@ -1,77 +1,143 @@
-// Ruta: tfg/azafatasapp/ui/home/HomeActivity.kt
 package tfg.azafatasapp.ui.home
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.ImageView
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import tfg.azafatasapp.R
-import tfg.azafatasapp.models.User
-import tfg.azafatasapp.ui.perfil.PerfilActivity // Asegúrate de importar PerfilActivity
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import tfg.azafatasapp.ui.profile.PerfilActivity
 
-class HomeActivity : AppCompatActivity() {
-
-    private lateinit var welcomeTextView: TextView
-    private lateinit var auth: FirebaseAuth
-    private lateinit var db: FirebaseFirestore
-    private lateinit var logoUser: ImageView // Declarar ImageView
+class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_home)
 
-        // Inicializar Firebase Auth y Firestore
-        auth = FirebaseAuth.getInstance()
-        db = FirebaseFirestore.getInstance()
-
-        // Inicializar vistas
-        welcomeTextView = findViewById(R.id.welcome_text_view)
-        logoUser = findViewById(R.id.logo_user) // Inicializar ImageView
-
-        // Configurar el click listener para el logo
-        logoUser.setOnClickListener {
-            val intent = Intent(this, PerfilActivity::class.java)
-            startActivity(intent)
-        }
-
-        // Obtener el nombre del usuario del Intent
-        val updatedName = intent.getStringExtra("updatedName")
-        if (updatedName != null) {
-            displayWelcomeMessage(updatedName)
-        } else {
-            loadUserNameFromFirestore()
+        setContent {
+            HomeScreen()
         }
     }
 
-    private fun displayWelcomeMessage(userName: String) {
-        welcomeTextView.text = "Bienvenido, $userName"
-    }
+    @Composable
+    fun HomeScreen() {
+        // Aquí va el contenido principal de la pantalla (por ejemplo, tu lista, contenido, etc.)
 
-    private fun loadUserNameFromFirestore() {
-        val currentUser = auth.currentUser
-        if (currentUser != null) {
-            db.collection("users").document(currentUser.uid)
-                .get()
-                .addOnSuccessListener { document ->
-                    if (document != null && document.exists()) {
-                        val user = document.toObject(User::class.java)
-                        if (user != null) {
-                            displayWelcomeMessage(user.name)
-                        } else {
-                            welcomeTextView.text = "Bienvenido"
-                        }
-                    } else {
-                        welcomeTextView.text = "Bienvenido"
-                    }
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                // Tu contenido principal de la actividad
+                // Ejemplo: un texto o un listado
+                Text(text = "Contenido principal de Home", fontSize = 20.sp)
+            }
+
+            // Footer de navegación en la parte inferior de la pantalla
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(Color.LightGray)
+                    .padding(vertical = 8.dp)
+            ) {
+                // Fila con los iconos
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Icono de Inicio
+                    Icon(
+                        Icons.Default.Home,
+                        contentDescription = "Inicio",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clickable {
+                                val intent = Intent(this@HomeActivity, HomeActivity::class.java)
+                                startActivity(intent)
+                            }
+                    )
+                    // Icono de Trabajos
+                    Icon(
+                        Icons.Default.Face,
+                        contentDescription = "Trabajos",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clickable {
+                                Toast.makeText(this@HomeActivity, "Trabajos clickeado", Toast.LENGTH_SHORT).show()
+                            }
+                    )
+                    // Icono de Ofertas
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Ofertas",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clickable {
+                                Toast.makeText(this@HomeActivity, "Ofertas clickeado", Toast.LENGTH_SHORT).show()
+                            }
+                    )
+                    // Icono de Mensajes
+                    Icon(
+                        Icons.Default.Notifications,
+                        contentDescription = "Mensajes",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clickable {
+                                Toast.makeText(this@HomeActivity, "Mensajes clickeado", Toast.LENGTH_SHORT).show()
+                            }
+                    )
+                    // Icono de Perfil
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = "Perfil",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clickable {
+                                val intent = Intent(this@HomeActivity, PerfilActivity::class.java)
+                                startActivity(intent)
+                                Toast.makeText(this@HomeActivity, "Perfil clickeado", Toast.LENGTH_SHORT).show()
+                            }
+                    )
                 }
-                .addOnFailureListener { exception ->
-                    welcomeTextView.text = "Error al cargar nombre: ${exception.message}"
+
+                // Fila con los textos
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Texto de Inicio
+                    Text("Inicio", fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    // Texto de Trabajos
+                    Text("Trabajos", fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    // Texto de Ofertas
+                    Text("Ofertas", fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    // Texto de Mensajes
+                    Text("Mensajes", fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    // Texto de Perfil
+                    Text("Perfil", fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                 }
-        } else {
-            welcomeTextView.text = "No hay usuario autenticado"
+            }
         }
     }
 }
