@@ -95,8 +95,7 @@ class LoginActivity : ComponentActivity() {
                     }, { exception ->
                         isLoading = false
                         errorMessage = "Error: ${exception.message}"
-                    })
-                },
+                    }) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading
             ) {

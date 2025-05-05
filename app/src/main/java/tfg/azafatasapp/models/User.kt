@@ -1,6 +1,6 @@
 package tfg.azafatasapp.models
 
-data class User(
+data class          User(
     val uid: String = "", // ID único del usuario en Firebase Authentication
     val role: String = "user", // El rol por defecto es "user"
     val name: String = "", // Nombre completo del usuario

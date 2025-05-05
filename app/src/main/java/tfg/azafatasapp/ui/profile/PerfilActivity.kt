@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import tfg.azafatasapp.Admin.MainActivityAdmin
 import tfg.azafatasapp.ui.home.HomeActivity
+import tfg.azafatasapp.ui.login.LoginActivity
 
 class PerfilActivity : ComponentActivity() {
 
@@ -176,7 +177,27 @@ class PerfilActivity : ComponentActivity() {
                 ) {
                     Text("Guardar cambios")
                 }
+
+
+                // Botón para cerrar sesión
+                Button(
+                    onClick = {
+                        FirebaseAuth.getInstance().signOut()
+                        val intent = Intent(this@PerfilActivity, LoginActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        startActivity(intent)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cerrar sesión", color = Color.White)
+                }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+
+
 
             // Footer de navegación en la parte inferior de la pantalla
             Column(

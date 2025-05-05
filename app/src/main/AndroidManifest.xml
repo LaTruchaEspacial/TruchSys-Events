@@ -22,6 +22,7 @@
         <activity android:name=".ui.home.HomeActivity" />
         <activity android:name=".ui.profile.PerfilActivity"/>
         <activity android:name=".Admin.MainActivityAdmin" />
+        <activity android:name=".ui.admins.WorksAdminActivity" />
 
 
     </application>
