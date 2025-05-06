@@ -23,6 +23,9 @@
         <activity android:name=".ui.profile.PerfilActivity"/>
         <activity android:name=".Admin.MainActivityAdmin" />
         <activity android:name=".ui.admins.WorksAdminActivity" />
+        <activity android:name=".ui.users.WorksUserActivity" />
+        <activity android:name=".ui.users.MessageUserActivity" />
+        <activity android:name=".ui.admins.MessageAdminActivity" />
 
 
     </application>

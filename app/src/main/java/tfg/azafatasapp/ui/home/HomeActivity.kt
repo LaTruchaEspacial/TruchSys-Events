@@ -23,6 +23,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import tfg.azafatasapp.ui.profile.PerfilActivity
+import tfg.azafatasapp.ui.users.MessageUserActivity
+import tfg.azafatasapp.ui.users.WorksUserActivity
 
 class HomeActivity : ComponentActivity() {
 
@@ -83,7 +85,9 @@ class HomeActivity : ComponentActivity() {
                         modifier = Modifier
                             .size(28.dp)
                             .clickable {
-                                Toast.makeText(this@HomeActivity, "Trabajos clickeado", Toast.LENGTH_SHORT).show()
+                                val intent = Intent(this@HomeActivity, WorksUserActivity::class.java)
+                                startActivity(intent)
+                                Toast.makeText(this@HomeActivity, "Perfil clickeado", Toast.LENGTH_SHORT).show()
                             }
                     )
                     // Icono de Ofertas
@@ -103,7 +107,9 @@ class HomeActivity : ComponentActivity() {
                         modifier = Modifier
                             .size(28.dp)
                             .clickable {
-                                Toast.makeText(this@HomeActivity, "Mensajes clickeado", Toast.LENGTH_SHORT).show()
+                                val intent = Intent(this@HomeActivity, MessageUserActivity::class.java)
+                                startActivity(intent)
+                                Toast.makeText(this@HomeActivity, "Perfil clickeado", Toast.LENGTH_SHORT).show()
                             }
                     )
                     // Icono de Perfil

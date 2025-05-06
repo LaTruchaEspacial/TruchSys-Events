@@ -215,11 +215,25 @@ class WorksAdminActivity : ComponentActivity() {
                     TextButton(onClick = {
                         val id = event["id"] as String
                         val userUIDs = currentAssigned.toList()
+
                         firestore.collection("eventos").document(id).update("estado", "Finalizado")
                         userUIDs.forEach { uid ->
                             firestore.collection("users").document(uid).update("estado", "Activo")
                         }
-                        Toast.makeText(this@WorksAdminActivity, "Evento finalizado", Toast.LENGTH_SHORT).show()
+
+                        // Borrar mensajes del evento
+                        firestore.collection("mensajes")
+                            .whereEqualTo("eventoId", id)
+                            .get()
+                            .addOnSuccessListener { snapshot ->
+                                val batch = firestore.batch()
+                                snapshot.documents.forEach { doc ->
+                                    batch.delete(doc.reference)
+                                }
+                                batch.commit()
+                            }
+
+                        Toast.makeText(this@WorksAdminActivity, "Evento finalizado y mensajes eliminados", Toast.LENGTH_SHORT).show()
                         selectedEvent = null
                     }) {
                         Text("Finalizar evento", color = Color.Red)
