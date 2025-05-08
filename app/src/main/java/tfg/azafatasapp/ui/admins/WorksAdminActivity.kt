@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -57,6 +58,23 @@ class WorksAdminActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            Button(
+                onClick = {
+                    selectedEvent = mapOf(
+                        "evento" to "",
+                        "direccion" to "",
+                        "fecha" to "",
+                        "horaInicio" to "",
+                        "horas" to "",
+                        "usuariosAsignados" to emptyList<String>(),
+                        "id" to ""
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            ) {
+                Text("Crear nuevo evento")
+            }
+
             val filteredEvents = events.filter {
                 it["evento"].toString().contains(searchQuery, ignoreCase = true)
             }
@@ -74,6 +92,7 @@ class WorksAdminActivity : ComponentActivity() {
                             Text("Evento: ${event["evento"]}")
                             Text("Fecha: ${event["fecha"]}")
                             Text("Hora: ${event["horaInicio"]}")
+                            Text("Horas trabajadas: ${event["horas"] ?: "No asignadas"}")
                             Text("Dirección: ${event["direccion"]}")
                         }
                     }
@@ -81,10 +100,7 @@ class WorksAdminActivity : ComponentActivity() {
             }
 
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.LightGray)
-                    .padding(vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth().background(Color.LightGray).padding(vertical = 8.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -114,6 +130,7 @@ class WorksAdminActivity : ComponentActivity() {
             var editedAddress by remember { mutableStateOf(event["direccion"]?.toString() ?: "") }
             var editedFecha by remember { mutableStateOf(event["fecha"]?.toString() ?: "") }
             var editedHora by remember { mutableStateOf(event["horaInicio"]?.toString() ?: "") }
+            var editedHorasTrabajadas by remember { mutableStateOf(event["horas"]?.toString() ?: "") }
 
             val currentAssigned = remember { mutableStateListOf<String>().apply { addAll(event["usuariosAsignados"] as? List<String> ?: emptyList()) } }
             var userList by remember { mutableStateOf(listOf<Map<String, String>>()) }
@@ -126,11 +143,10 @@ class WorksAdminActivity : ComponentActivity() {
                     val name = it.getString("name") ?: return@mapNotNull null
                     val estado = it.getString("estado") ?: "Activo"
                     val role = it.getString("role") ?: ""
-                    if (estado == "Activo" || currentAssigned.contains(uid)) {
-                        if (role == "user") mapOf("uid" to uid, "name" to name, "estado" to estado) else null
+                    if ((estado == "Activo" || currentAssigned.contains(uid)) && role == "user") {
+                        mapOf("uid" to uid, "name" to name, "estado" to estado)
                     } else null
                 }
-
                 assignedNames = userList.filter { currentAssigned.contains(it["uid"]) }.mapNotNull { it["name"] }
             }
 
@@ -143,10 +159,11 @@ class WorksAdminActivity : ComponentActivity() {
                         OutlinedTextField(editedAddress, { editedAddress = it }, label = { Text("Dirección") })
                         OutlinedTextField(editedFecha, { editedFecha = it }, label = { Text("Fecha") })
                         OutlinedTextField(editedHora, { editedHora = it }, label = { Text("Hora inicio") })
+                        OutlinedTextField(editedHorasTrabajadas, { editedHorasTrabajadas = it }, label = { Text("Horas trabajadas") })
 
                         Spacer(Modifier.height(8.dp))
                         Text("Participantes seleccionados:")
-                        assignedNames.forEach { name -> Text("• $name") }
+                        assignedNames.forEach { name -> Text("\u2022 $name") }
 
                         Spacer(Modifier.height(8.dp))
                         Text("Agregar/Quitar trabajadores:")
@@ -159,19 +176,13 @@ class WorksAdminActivity : ComponentActivity() {
                                 val isSelected = currentAssigned.contains(uid)
 
                                 Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            if (isSelected) currentAssigned.remove(uid)
-                                            else if (estado == "Activo") currentAssigned.add(uid)
-                                        }
-                                        .padding(4.dp),
+                                    Modifier.fillMaxWidth().clickable {
+                                        if (isSelected) currentAssigned.remove(uid)
+                                        else if (estado == "Activo") currentAssigned.add(uid)
+                                    }.padding(4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Checkbox(
-                                        checked = isSelected,
-                                        onCheckedChange = null
-                                    )
+                                    Checkbox(checked = isSelected, onCheckedChange = null)
                                     Text("$name ($estado)")
                                 }
                             }
@@ -180,10 +191,9 @@ class WorksAdminActivity : ComponentActivity() {
                 },
                 confirmButton = {
                     TextButton(onClick = {
-                        val id = event["id"] as String
+                        val id = event["id"] as? String
                         val oldAssigned = event["usuariosAsignados"] as? List<String> ?: emptyList()
                         val newAssigned = currentAssigned.toList()
-
                         val added = newAssigned - oldAssigned
                         val removed = oldAssigned - newAssigned
 
@@ -199,14 +209,24 @@ class WorksAdminActivity : ComponentActivity() {
                             "direccion" to editedAddress,
                             "fecha" to editedFecha,
                             "horaInicio" to editedHora,
-                            "usuariosAsignados" to newAssigned
+                            "horas" to editedHorasTrabajadas,
+                            "usuariosAsignados" to newAssigned,
+                            "estado" to "En curso"
                         )
 
-                        firestore.collection("eventos").document(id).update(update)
-                            .addOnSuccessListener {
-                                Toast.makeText(this@WorksAdminActivity, "Evento actualizado", Toast.LENGTH_SHORT).show()
-                                selectedEvent = null
-                            }
+                        if (!id.isNullOrEmpty()) {
+                            firestore.collection("eventos").document(id).update(update)
+                                .addOnSuccessListener {
+                                    Toast.makeText(this@WorksAdminActivity, "Evento actualizado", Toast.LENGTH_SHORT).show()
+                                    selectedEvent = null
+                                }
+                        } else {
+                            firestore.collection("eventos").add(update)
+                                .addOnSuccessListener {
+                                    Toast.makeText(this@WorksAdminActivity, "Evento creado", Toast.LENGTH_SHORT).show()
+                                    selectedEvent = null
+                                }
+                        }
                     }) {
                         Text("Guardar")
                     }
@@ -221,7 +241,6 @@ class WorksAdminActivity : ComponentActivity() {
                             firestore.collection("users").document(uid).update("estado", "Activo")
                         }
 
-                        // Borrar mensajes del evento
                         firestore.collection("mensajes")
                             .whereEqualTo("eventoId", id)
                             .get()
@@ -233,7 +252,27 @@ class WorksAdminActivity : ComponentActivity() {
                                 batch.commit()
                             }
 
-                        Toast.makeText(this@WorksAdminActivity, "Evento finalizado y mensajes eliminados", Toast.LENGTH_SHORT).show()
+                        // Crear facturas solo para usuarios con rol "user"
+                        firestore.collection("users")
+                            .whereIn(FieldPath.documentId(), userUIDs)
+                            .get()
+                            .addOnSuccessListener { usersSnapshot ->
+                                usersSnapshot.documents.forEach { userDoc ->
+                                    val uid = userDoc.id
+                                    val role = userDoc.getString("role") ?: "user"
+                                    if (role == "user") {
+                                        val facturaData = mapOf(
+                                            "nombreEvento" to editedName,
+                                            "participanteId" to uid,
+                                            "horasTrabajadas" to "",
+                                            "notas" to ""
+                                        )
+                                        firestore.collection("facturas").add(facturaData)
+                                    }
+                                }
+                            }
+
+                        Toast.makeText(this@WorksAdminActivity, "Evento finalizado, mensajes eliminados y facturas creadas", Toast.LENGTH_SHORT).show()
                         selectedEvent = null
                     }) {
                         Text("Finalizar evento", color = Color.Red)

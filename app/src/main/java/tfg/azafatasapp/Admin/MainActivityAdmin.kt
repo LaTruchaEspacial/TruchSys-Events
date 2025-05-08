@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import tfg.azafatasapp.ui.admins.BillingAdminActivity
 import tfg.azafatasapp.ui.admins.MessageAdminActivity
 import tfg.azafatasapp.ui.admins.WorksAdminActivity
 import tfg.azafatasapp.ui.profile.PerfilActivity
@@ -182,7 +183,11 @@ class MainActivityAdmin : ComponentActivity() {
                             val intent = Intent(this@MainActivityAdmin, WorksAdminActivity::class.java)
                             startActivity(intent)
                         })
-                        Icon(Icons.Default.Search, "Ofertas", Modifier.size(28.dp))
+                        Icon(Icons.Default.Search, "Facturas",  modifier = Modifier.size(28.dp).clickable {
+                            val intent = Intent(this@MainActivityAdmin, BillingAdminActivity::class.java)
+                            startActivity(intent)
+                        })
+
                         Icon(Icons.Default.Notifications, "Mensajes",modifier = Modifier.size(28.dp).clickable {
                             val intent = Intent(this@MainActivityAdmin, MessageAdminActivity::class.java)
                             startActivity(intent)

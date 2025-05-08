@@ -26,6 +26,8 @@
         <activity android:name=".ui.users.WorksUserActivity" />
         <activity android:name=".ui.users.MessageUserActivity" />
         <activity android:name=".ui.admins.MessageAdminActivity" />
+        <activity android:name=".ui.users.BillingUserActivity" />
+        <activity android:name=".ui.admins.BillingAdminActivity" />
 
 
     </application>
