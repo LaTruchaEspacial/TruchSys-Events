@@ -8,53 +8,124 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.window.Dialog
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.*
+import kotlinx.coroutines.tasks.await
 import tfg.azafatasapp.ui.profile.PerfilActivity
 import tfg.azafatasapp.ui.users.BillingUserActivity
 import tfg.azafatasapp.ui.users.MessageUserActivity
 import tfg.azafatasapp.ui.users.WorksUserActivity
+import java.text.SimpleDateFormat
+import java.util.*
 
 class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        setContent {
-            HomeScreen()
-        }
+        setContent { HomeScreen() }
     }
 
     @Composable
     fun HomeScreen() {
-        // Aquí va el contenido principal de la pantalla (por ejemplo, tu lista, contenido, etc.)
+        val firestore = FirebaseFirestore.getInstance()
+        val auth = FirebaseAuth.getInstance()
+        val currentUser = auth.currentUser
+        val userId = currentUser?.uid ?: return
+        val context = LocalContext.current
 
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        var eventosAsignados by remember { mutableStateOf(listOf<Map<String, Any>>()) }
+        var grupoSeleccionado by remember { mutableStateOf<Map<String, Any>?>(null) }
+        var mensajes by remember { mutableStateOf(listOf<Map<String, Any>>()) }
+        var nuevoMensaje by remember { mutableStateOf("") }
+        var userRoles by remember { mutableStateOf(mapOf<String, String>()) }
+
+        // Cargar eventos asignados
+        LaunchedEffect(Unit) {
+            firestore.collection("eventos")
+                .whereEqualTo("estado", "En curso")
+                .whereArrayContains("usuariosAsignados", userId)
+                .addSnapshotListener { snapshot, _ ->
+                    eventosAsignados = snapshot?.documents?.mapNotNull { it.data?.plus("id" to it.id) } ?: emptyList()
+                }
+
+            val usuariosSnapshot = firestore.collection("users").get().await()
+            userRoles = usuariosSnapshot.documents.associate {
+                it.id to (it.getString("role") ?: "user")
+            }
+        }
+
+        // Escuchar mensajes del grupo seleccionado
+        DisposableEffect(grupoSeleccionado) {
+            val listener = grupoSeleccionado?.get("id")?.let { grupoId ->
+                firestore.collection("message")
+                    .document(grupoId.toString())
+                    .addSnapshotListener { snapshot, _ ->
+                        val data = snapshot?.get("mensajes") as? List<Map<String, Any>>
+                        mensajes = data ?: emptyList()
+                    }
+            }
+            onDispose { listener?.remove() }
+        }
+
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
+                    .padding(bottom = 80.dp)
             ) {
-                // Tu contenido principal de la actividad
-                // Ejemplo: un texto o un listado
-                Text(text = "Contenido principal de Home", fontSize = 20.sp)
+                Text("Eventos asignados", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                eventosAsignados.forEach { evento ->
+                    val nombre = evento["evento"] as? String ?: "Sin nombre"
+                    val fecha = evento["fecha"] as? String ?: "Sin fecha"
+                    Text(
+                        text = "$nombre - $fecha",
+                        fontSize = 14.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    )
+                }
+
+                Divider(
+                    color = Color.Gray,
+                    thickness = 1.dp,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+
+                Text("Grupos de mensajes", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+                eventosAsignados.forEach { grupo ->
+                    val nombre = grupo["evento"] as? String ?: "Sin nombre"
+                    Text(
+                        text = nombre,
+                        fontSize = 14.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { grupoSeleccionado = grupo }
+                            .padding(vertical = 4.dp)
+                    )
+                }
             }
 
-            // Footer de navegación en la parte inferior de la pantalla
+            // Footer
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -62,89 +133,118 @@ class HomeActivity : ComponentActivity() {
                     .background(Color.LightGray)
                     .padding(vertical = 8.dp)
             ) {
-                // Fila con los iconos
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    // Icono de Inicio
-                    Icon(
-                        Icons.Default.Home,
-                        contentDescription = "Inicio",
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickable {
-                                val intent = Intent(this@HomeActivity, HomeActivity::class.java)
-                                startActivity(intent)
-                            }
-                    )
-                    // Icono de Trabajos
-                    Icon(
-                        Icons.Default.Face,
-                        contentDescription = "Trabajos",
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickable {
-                                val intent = Intent(this@HomeActivity, WorksUserActivity::class.java)
-                                startActivity(intent)
-                                Toast.makeText(this@HomeActivity, "Perfil clickeado", Toast.LENGTH_SHORT).show()
-                            }
-                    )
-                    // Icono de Ofertas
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = "Facturas",
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickable {
-                                val intent = Intent(this@HomeActivity, BillingUserActivity::class.java)
-                                startActivity(intent)
-                                Toast.makeText(this@HomeActivity, "Facturas", Toast.LENGTH_SHORT).show()
-                            }
-                    )
-                    // Icono de Mensajes
-                    Icon(
-                        Icons.Default.Notifications,
-                        contentDescription = "Mensajes",
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickable {
-                                val intent = Intent(this@HomeActivity, MessageUserActivity::class.java)
-                                startActivity(intent)
-                                Toast.makeText(this@HomeActivity, "Perfil clickeado", Toast.LENGTH_SHORT).show()
-                            }
-                    )
-                    // Icono de Perfil
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = "Perfil",
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickable {
-                                val intent = Intent(this@HomeActivity, PerfilActivity::class.java)
-                                startActivity(intent)
-                                Toast.makeText(this@HomeActivity, "Perfil clickeado", Toast.LENGTH_SHORT).show()
-                            }
-                    )
+                    Icon(Icons.Default.Home, "Inicio", Modifier.size(28.dp).clickable {
+                        startActivity(Intent(this@HomeActivity, HomeActivity::class.java))
+                    })
+                    Icon(Icons.Default.Face, "Trabajos", Modifier.size(28.dp).clickable {
+                        startActivity(Intent(this@HomeActivity, WorksUserActivity::class.java))
+                        Toast.makeText(this@HomeActivity, "Trabajos clickeado", Toast.LENGTH_SHORT).show()
+                    })
+                    Icon(Icons.Default.Search, "Facturas", Modifier.size(28.dp).clickable {
+                        startActivity(Intent(this@HomeActivity, BillingUserActivity::class.java))
+                        Toast.makeText(this@HomeActivity, "Facturas clickeado", Toast.LENGTH_SHORT).show()
+                    })
+                    Icon(Icons.Default.Notifications, "Mensajes", Modifier.size(28.dp).clickable {
+                        startActivity(Intent(this@HomeActivity, MessageUserActivity::class.java))
+                        Toast.makeText(this@HomeActivity, "Mensajes clickeado", Toast.LENGTH_SHORT).show()
+                    })
+                    Icon(Icons.Default.Person, "Perfil", Modifier.size(28.dp).clickable {
+                        startActivity(Intent(this@HomeActivity, PerfilActivity::class.java))
+                        Toast.makeText(this@HomeActivity, "Perfil clickeado", Toast.LENGTH_SHORT).show()
+                    })
                 }
-
-                // Fila con los textos
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    // Texto de Inicio
-                    Text("Inicio", fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                    // Texto de Trabajos
-                    Text("Trabajos", fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                    // Texto de Ofertas
-                    Text("Ofertas", fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                    // Texto de Mensajes
-                    Text("Mensajes", fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                    // Texto de Perfil
-                    Text("Perfil", fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    listOf("Inicio", "Trabajos", "Ofertas", "Mensajes", "Perfil").forEach {
+                        Text(it, fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    }
+                }
+            }
+
+            // Diálogo de Chat
+            grupoSeleccionado?.let { grupo ->
+                Dialog(onDismissRequest = { grupoSeleccionado = null }) {
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        tonalElevation = 8.dp,
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("Chat: ${grupo["evento"]}", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(8.dp))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(300.dp)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                mensajes.forEach { msg ->
+                                    val sender = msg["senderName"] as? String ?: "Anon"
+                                    val content = msg["message"] as? String ?: ""
+                                    val time = (msg["timestamp"] as? Timestamp)?.toDate()?.let {
+                                        SimpleDateFormat("HH:mm", Locale.getDefault()).format(it)
+                                    } ?: ""
+                                    val role = userRoles[msg["senderId"]] ?: "user"
+                                    val align = if (role == "user") Alignment.End else Alignment.Start
+                                    val bg = if (role == "user") Color(0xFFD4F0C8) else Color(0xFFE6E6E6)
+
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = align
+                                    ) {
+                                        Text("$sender · $time", fontSize = 10.sp)
+                                        Surface(color = bg, shape = MaterialTheme.shapes.medium) {
+                                            Text(content, modifier = Modifier.padding(8.dp))
+                                        }
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = nuevoMensaje,
+                                onValueChange = { nuevoMensaje = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = { Text("Escribe tu mensaje") }
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    val grupoId = grupo["id"] as? String ?: return@Button
+                                    val mensaje = mapOf(
+                                        "senderId" to userId,
+                                        "senderName" to (currentUser.displayName ?: "Usuario"),
+                                        "message" to nuevoMensaje,
+                                        "timestamp" to Timestamp.now()
+                                    )
+                                    val ref = firestore.collection("message").document(grupoId)
+                                    if (nuevoMensaje.isNotBlank()) {
+                                        ref.update("mensajes", FieldValue.arrayUnion(mensaje))
+                                            .addOnSuccessListener { nuevoMensaje = "" }
+                                            .addOnFailureListener {
+                                                ref.set(mapOf("mensajes" to listOf(mensaje)))
+                                                    .addOnSuccessListener { nuevoMensaje = "" }
+                                                    .addOnFailureListener {
+                                                        Toast.makeText(context, "Error al enviar mensaje", Toast.LENGTH_SHORT).show()
+                                                    }
+                                            }
+                                    }
+                                },
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Text("Enviar")
+                            }
+                            TextButton(onClick = { grupoSeleccionado = null }) {
+                                Text("Cerrar")
+                            }
+                        }
+                    }
                 }
             }
         }
