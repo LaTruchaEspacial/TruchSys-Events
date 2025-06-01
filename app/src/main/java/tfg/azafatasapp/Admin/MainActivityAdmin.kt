@@ -100,7 +100,7 @@ class MainActivityAdmin : ComponentActivity() {
                             }
                         }
                     }
-
+                   //hola
                     // Filtro estado dinámico
                     var estadoExpanded by remember { mutableStateOf(false) }
                     Box {

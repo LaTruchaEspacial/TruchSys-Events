@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,22 +28,23 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import tfg.azafatasapp.Auth.Auth
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import tfg.azafatasapp.Admin.MainActivityAdmin
 import tfg.azafatasapp.ui.home.HomeActivity
 import tfg.azafatasapp.ui.login.LoginActivity
+import tfg.azafatasapp.ui.users.BillingUserActivity
+import tfg.azafatasapp.ui.users.MessageUserActivity
+import tfg.azafatasapp.ui.users.WorksUserActivity
 
 class PerfilActivity : ComponentActivity() {
-
     private lateinit var auth: Auth
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         auth = Auth(this)
-
-        setContent {
-            PerfilScreen()
-        }
+        setContent { PerfilScreen() }
     }
 
     @Composable
@@ -52,32 +54,23 @@ class PerfilActivity : ComponentActivity() {
         var fullName by remember { mutableStateOf("") }
         var phone by remember { mutableStateOf("") }
         var gender by remember { mutableStateOf("Male") }
-        var role by remember { mutableStateOf("") } // Variable para almacenar el rol
-        var loading by remember { mutableStateOf(true) } // Estado de carga
+        var role by remember { mutableStateOf("") }
+        var loading by remember { mutableStateOf(true) }
 
-        // Verificar si el usuario está autenticado
         if (user == null) {
             Toast.makeText(this@PerfilActivity, "No estás autenticado. Por favor, inicia sesión.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Cargar datos del usuario desde Firestore
         LaunchedEffect(user) {
             try {
-                val documentSnapshot = firestore.collection("users")
-                    .document(user.uid)
-                    .get()
-                    .await() // Usamos await para esperar la respuesta asincrónica
-
+                val documentSnapshot = firestore.collection("users").document(user.uid).get().await()
                 if (documentSnapshot.exists()) {
                     fullName = documentSnapshot.getString("name") ?: "Desconocido"
                     phone = documentSnapshot.getString("phone") ?: "No disponible"
                     gender = documentSnapshot.getString("gender") ?: "Male"
-
-                    // Obtener el rol
-                    role = documentSnapshot.getString("role") ?: "user" // Definir "user" como valor por defecto
-                    Log.d("PerfilActivity", "role: $role") // Depuración para verificar el valor del rol
-
+                    role = documentSnapshot.getString("role") ?: "user"
+                    Log.d("PerfilActivity", "role: $role")
                 } else {
                     Toast.makeText(this@PerfilActivity, "No se encontraron datos del usuario", Toast.LENGTH_SHORT).show()
                 }
@@ -88,17 +81,15 @@ class PerfilActivity : ComponentActivity() {
             }
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(Color(0xFFBBDEFB), Color.White)))
+        ) {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                 UserInfoCard(name = fullName, phone = phone, gender = gender)
-
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Imagen de perfil
                 Image(
                     painter = rememberImagePainter(user?.photoUrl ?: "https://www.example.com/default_profile_picture.png"),
                     contentDescription = "User Profile Picture",
@@ -108,98 +99,51 @@ class PerfilActivity : ComponentActivity() {
                         .clip(CircleShape)
                 )
 
-                // Mostrar los campos editables
-                OutlinedTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    label = { Text("Nombre completo") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                OutlinedTextField(value = fullName, onValueChange = { fullName = it }, label = { Text("Nombre completo") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Número de teléfono") }, modifier = Modifier.fillMaxWidth())
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                OutlinedTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    label = { Text("Número de teléfono") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Radio buttons para seleccionar género
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
                     Text("Género:", modifier = Modifier.align(Alignment.CenterVertically))
-
                     Spacer(modifier = Modifier.width(8.dp))
-
                     Row(horizontalArrangement = Arrangement.Start) {
-                        RadioButton(
-                            selected = gender == "Male",
-                            onClick = { gender = "Male" }
-                        )
+                        RadioButton(selected = gender == "Male", onClick = { gender = "Male" })
                         Text("Masculino", modifier = Modifier.align(Alignment.CenterVertically))
-
                         Spacer(modifier = Modifier.width(16.dp))
-
-                        RadioButton(
-                            selected = gender == "Female",
-                            onClick = { gender = "Female" }
-                        )
+                        RadioButton(selected = gender == "Female", onClick = { gender = "Female" })
                         Text("Femenino", modifier = Modifier.align(Alignment.CenterVertically))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Botón para guardar los cambios
-                Button(
-                    onClick = {
-                        user?.let {
-                            val updatedUser = hashMapOf(
-                                "name" to fullName,
-                                "phone" to phone,
-                                "gender" to gender
-                            )
-
-                            firestore.collection("users")
-                                .document(it.uid)
-                                .update(updatedUser as Map<String, Any>)
-                                .addOnSuccessListener {
-                                    Toast.makeText(this@PerfilActivity, "Datos actualizados con éxito", Toast.LENGTH_SHORT).show()
-                                }
-                                .addOnFailureListener { exception ->
-                                    Toast.makeText(this@PerfilActivity, "Error: ${exception.message}", Toast.LENGTH_SHORT).show()
-                                }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Button(onClick = {
+                    user?.let {
+                        val updatedUser = hashMapOf("name" to fullName, "phone" to phone, "gender" to gender)
+                        firestore.collection("users").document(it.uid).update(updatedUser as Map<String, Any>)
+                            .addOnSuccessListener {
+                                Toast.makeText(this@PerfilActivity, "Datos actualizados con éxito", Toast.LENGTH_SHORT).show()
+                            }
+                            .addOnFailureListener { exception ->
+                                Toast.makeText(this@PerfilActivity, "Error: ${exception.message}", Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                }, modifier = Modifier.fillMaxWidth()) {
                     Text("Guardar cambios")
                 }
 
-
-                // Botón para cerrar sesión
-                Button(
-                    onClick = {
-                        FirebaseAuth.getInstance().signOut()
-                        val intent = Intent(this@PerfilActivity, LoginActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        startActivity(intent)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Button(onClick = {
+                    FirebaseAuth.getInstance().signOut()
+                    val intent = Intent(this@PerfilActivity, LoginActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    startActivity(intent)
+                }, colors = ButtonDefaults.buttonColors(containerColor = Color.Red), modifier = Modifier.fillMaxWidth()) {
                     Text("Cerrar sesión", color = Color.White)
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-
-
-
-            // Footer de navegación en la parte inferior de la pantalla
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -207,57 +151,54 @@ class PerfilActivity : ComponentActivity() {
                     .background(Color.LightGray)
                     .padding(vertical = 8.dp)
             ) {
-                // Fila con los iconos
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    // Icono de Inicio
-                    Icon(
-                        Icons.Default.Home,
-                        contentDescription = "Inicio",
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickable {
-                                // Depuración: Verificar antes de navegar
-                                Log.d("PerfilActivity", "Navigating to Home. Role: $role")
-
-                                // Verificar el rol y redirigir
-                                val intent = if (role == "admin") {
-                                    Intent(this@PerfilActivity, MainActivityAdmin::class.java)
-                                } else {
-                                    Intent(this@PerfilActivity, HomeActivity::class.java)
-                                }
-                                startActivity(intent)
-                            }
-                    )
-                    // Puedes agregar más iconos aquí si es necesario
+                    Icon(Icons.Default.Home, "Inicio", Modifier.size(28.dp).clickable {
+                        val intent = if (role == "admin") Intent(this@PerfilActivity, MainActivityAdmin::class.java)
+                        else Intent(this@PerfilActivity, HomeActivity::class.java)
+                        startActivity(intent)
+                    })
+                    Icon(Icons.Default.Face, "Trabajos", Modifier.size(28.dp).clickable {
+                        startActivity(Intent(this@PerfilActivity, WorksUserActivity::class.java))
+                        Toast.makeText(this@PerfilActivity, "Trabajos clickeado", Toast.LENGTH_SHORT).show()
+                    })
+                    Icon(Icons.Default.Search, "Facturas", Modifier.size(28.dp).clickable {
+                        startActivity(Intent(this@PerfilActivity, BillingUserActivity::class.java))
+                        Toast.makeText(this@PerfilActivity, "Facturas clickeado", Toast.LENGTH_SHORT).show()
+                    })
+                    Icon(Icons.Default.Notifications, "Mensajes", Modifier.size(28.dp).clickable {
+                        startActivity(Intent(this@PerfilActivity, MessageUserActivity::class.java))
+                        Toast.makeText(this@PerfilActivity, "Mensajes clickeado", Toast.LENGTH_SHORT).show()
+                    })
+                    Icon(Icons.Default.Person, "Perfil", Modifier.size(28.dp))
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    listOf("Inicio", "Trabajos", "Facturas", "Mensajes", "Perfil").forEach {
+                        Text(it, fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    }
                 }
             }
         }
     }
 
-    // Composable para la tarjeta de información del usuario
     @Composable
     fun UserInfoCard(name: String, phone: String, gender: String) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
             shape = RoundedCornerShape(12.dp),
             elevation = CardDefaults.cardElevation(8.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(text = "Información del usuario", fontWeight = FontWeight.Bold, color = Color(0xFF333333))
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Text("Información del usuario", fontWeight = FontWeight.Bold, color = Color(0xFF333333))
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Nombre: $name")
-                Text(text = "Teléfono: $phone")
-                Text(text = "Género: $gender")
+                Text("Nombre: $name")
+                Text("Teléfono: $phone")
+                Text("Género: $gender")
             }
         }
     }

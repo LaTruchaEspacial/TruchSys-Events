@@ -11,12 +11,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -84,44 +85,57 @@ class HomeActivity : ComponentActivity() {
             onDispose { listener?.remove() }
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFFBBDEFB), Color.White)
+                    )
+                )
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
                     .padding(bottom = 80.dp)
             ) {
-                Text("Eventos asignados", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Eventos asignados", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0057D9))
+                Spacer(Modifier.height(8.dp))
                 eventosAsignados.forEach { evento ->
                     val nombre = evento["evento"] as? String ?: "Sin nombre"
                     val fecha = evento["fecha"] as? String ?: "Sin fecha"
-                    Text(
-                        text = "$nombre - $fecha",
-                        fontSize = 14.sp,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    )
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(nombre, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF0D47A1))
+                            Text(fecha, fontSize = 14.sp, color = Color.Gray)
+                        }
+                    }
                 }
 
-                Divider(
-                    color = Color.Gray,
-                    thickness = 1.dp,
-                    modifier = Modifier.padding(vertical = 12.dp)
-                )
-
-                Text("Grupos de mensajes", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(16.dp))
+                Text("Grupos de mensajes", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0057D9))
+                Spacer(Modifier.height(8.dp))
 
                 eventosAsignados.forEach { grupo ->
                     val nombre = grupo["evento"] as? String ?: "Sin nombre"
-                    Text(
-                        text = nombre,
-                        fontSize = 14.sp,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { grupoSeleccionado = grupo }
-                            .padding(vertical = 4.dp)
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { grupoSeleccionado = grupo },
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(nombre, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color(0xFF6A1B9A))
+                            Text("Toca para abrir el chat", fontSize = 12.sp, color = Color.DarkGray)
+                        }
+                    }
                 }
             }
 
@@ -161,7 +175,7 @@ class HomeActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    listOf("Inicio", "Trabajos", "Ofertas", "Mensajes", "Perfil").forEach {
+                    listOf("Inicio", "Trabajos", "Facturas", "Mensajes", "Perfil").forEach {
                         Text(it, fontSize = 8.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                     }
                 }
